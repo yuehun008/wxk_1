@@ -1,2 +1,8 @@
 it is a test textfile
 i want to see it in websit
+ok
+
+the step of using githut is :
+first change the text.
+second commit the change
+push or featch origin
