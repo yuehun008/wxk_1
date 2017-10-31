@@ -1,0 +1,46 @@
+从mysql上清理Hive元数据，删除Hive表，但是不删除实际数据。
+输入条件：tbl_id = 71
+
+1、先在 mysql 中建存储过程
+DELIMITER // 
+drop procedure if exists t1;
+create  procedure del_metadate1 ( in tbinput int) 
+begin
+	declare v_sd_id int ;
+	declare v_part_id int ;
+	declare v_cd_id int ;
+	declare v_serde_id int ;
+	
+	select tbinput;
+	select SD_ID into v_sd_id from tbls where TBL_ID = tbinput;
+	select part_id  into v_part_id from partitions where tbl_id = tbinput;
+	select cd_id , serde_id into v_cd_id,v_serde_id from sds where sd_id = v_sd_id;
+	select v_sd_id,v_part_id,v_cd_id,v_serde_id;
+
+	if v_part_id is not  null then 
+		delete from partition_params where part_id = v_part_id;
+		delete from partition_key_vals where part_id = v_part_id;
+		
+	end if;
+	delete from serdes where serde_id = v_serde_id;
+	delete from serde_params where serde_id = v_serde_id;
+	delete from columns_v2 where cd_id = v_cd_id;
+	delete from sds where sd_id = v_sd_id;
+	delete from partitions where tbl_id = tbinput;
+	delete from partition_keys where tbl_id = tbinput;
+	delete from table_params where tbl_id = tbinput;
+	delete from tbls where tbl_id = tbinput;
+	
+end ;
+//
+delimiter ; 
+
+2、编写shell：
+hadoop002:mysqladmin:/usr/local/mysql:>cat mysql_delete.sh 
+#!/bin/bash
+source /usr/local/mysql/.bash_profile
+mysql -uroot -ppassword hive3 -e "
+SET FOREIGN_KEY_CHECKS = 0; 
+call del_metadate1(71);  
+SET FOREIGN_KEY_CHECKS = 1;
+quit" >> /tmp/mysql_delete.log
